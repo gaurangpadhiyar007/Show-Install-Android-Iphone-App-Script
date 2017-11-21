@@ -1,0 +1,297 @@
+<?php
+/**
+* @package App install notification
+* @category App Install Notification
+* @author  Gaurang Padhiyar <gaurangpadhiyar1993@gmail.com>
+*/
+
+?>
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>App Manager</title>
+		<!-- Checking IOS webview or in browser, or not ios -->
+		<script type="text/javascript">
+			var standalone = window.navigator.standalone,
+		    userAgent = window.navigator.userAgent.toLowerCase(),
+		    safari = /safari/.test( userAgent ),
+		    ios = /iphone|ipod|ipad/.test( userAgent );
+
+			if( ios ) {
+			    if ( !standalone && safari ) {
+			        //browser
+			        var iOS = 'browser';
+			    } else if ( standalone && !safari ) {
+			        //standalone
+			        var iOS = 'standalone';
+			    } else if ( !standalone && !safari ) {
+			        //uiwebview
+			        var iOS = 'uiwebview';
+			    };
+			} else {
+			    //not iOS
+				var iOS = 'not_ios';
+			};
+		</script>
+		<style type="text/css">
+			.install-app{
+				width: 100%;
+				position: fixed;
+				z-index: 999;
+			    background: #FFFFFF;
+			    padding: 10px;
+			    color: #000000;
+			    height:auto;
+			}
+			.install-app .rating-box{
+				width: 70px;
+			}
+			.install-app-reivew .rating-box{
+				background: url(<?php echo 'images/bkg_rating.gif'; ?>) 0px 100% repeat-x) 0px 0 repeat-x;
+			}
+			.install-app .rating-box .rating{
+				background: url(<?php echo 'images/bkg_rating.gif'; ?>) 0px 100% repeat-;
+			}
+			.install-app-image{
+				width: 33.33%
+			}
+			.left {
+				float: left;
+			}
+			.install-app-name{
+				font-size:20px;
+			}
+			.install-app-middle.left {
+			    width: 37%;
+			    padding-left: 13px;
+			}
+			.install-app-middle.left, .install-app-link.left, .install-app-close.left, .install-app-image.left{
+				float: none !important;
+			    font-size: 19px;
+			    display: table-cell;
+			    vertical-align: middle;
+			}
+			.install-app-link.left{
+				width:25%;
+			}
+			.install-app-link.left a{
+				background: #EA1B25;
+			    display: block;
+			    color: #fff;
+			    text-align: center;
+			    font-size: 11px;
+			    padding: 7px;
+			}
+			.install-app-close.left{
+				text-align:left;
+			}
+			.install-app-close.left span{
+				font-size:0;
+			}
+			.install-app-close.left span:after{
+				content: "\f00d";
+			    position: absolute;
+			    font-size: 20px;
+			    font-family: "Fontawesome";
+			    right: 11px;
+			}
+		</style>
+	</head>
+	<body>
+		<?php
+			$iphone = false;
+			// For Iphone and Ipad Users
+			$userAgent = $_SERVER['HTTP_USER_AGENT'];
+			// $userAgent = Mage::helper('core/http')->getHttpUserAgent();
+
+			if(preg_match('/(iphone|ipod)/i', $userAgent))
+			{
+				$iphone = true;
+				$downloadLink = 'https://itunes.apple.com/us/app/whatsapp-messenger/id310633997?mt=8';
+			}
+			else{
+				$url 	 = 'https://play.google.com/store/apps/details';
+				$appId   = 'com.whatsapp';
+				$params  = 'id='.$appId;
+				$feedURL = $url.'?'.$params;
+				$downloadLink = $feedURL;
+				// ini_set('display_error', 'true');
+
+				$data = file_get_contents($feedURL);
+
+				$dom = new DOMDocument();
+
+				@$dom->loadHTML($data);
+
+				/*** discard white space ***/ 
+				$dom->preserveWhiteSpace = false;
+
+				$xpath = new DOMXPath($dom);
+				
+				/** 
+				*	Name 
+				**/
+
+				// Name Manager
+				$appName = NULL;
+				$name 	= '//span[starts-with(@itemprop, "name")]';
+				foreach($xpath->query($name) as $nameNode) {
+					// echo trim($nameNode->nodeValue);
+					$appName = $nameNode->nodeValue;
+				}
+
+				/* Image */
+				$image = NULL;
+				$imageAlt = NULL;
+				$images = $dom->getElementsByTagName('img');
+				foreach($images as $img){
+				 	if($img->getAttribute('itemprop') == 'image'){
+				 		$image 		= $img->getAttribute('src');
+				 		$imageAlt 	= $img->getAttribute('alt');
+				 		// echo '<img src='.'https:'.$img->getAttribute('src').' alt = '.$img->getAttribute('alt').'/>';
+				 	}
+				}
+
+				/** 
+				*	Rating 
+				**/
+
+				$rating = $xpath->query('//div[@class="small-star star-rating-non-editable-container"]'.'//div[@class="current-rating"]');
+
+				$ratingWidth = $rating->item(0)->getAttribute('style');
+				
+				/** 
+				* Rating Count 
+				**/
+
+				$ratingCountQuery = $xpath->query('//span[@class="reviews-num"]');
+				$ratingCount = $ratingCountQuery->item(0)->nodeValue;
+				// echo '('.$ratingCount.')';
+
+
+				/** 
+				*	Url 
+				**/
+
+				// $body = $dom->getElementById('body-content');
+				// foreach($body->childNodes as $data){
+				// 	if($data->tagName == 'meta'){
+				// 		if($data->getAttribute('itemprop') == 'url'){
+				// 			$downloadLink = trim($data->getAttribute('content'));
+				// 		}
+				// 	}
+				// }
+
+			}
+		?>
+		<?php $style = 'display:none;'?>
+
+		<!-- Android APP View has HTTP_X_REQUESTED_WITH param with value like 'com.whatsapp' -->
+		<?php if(!isset($_SERVER['HTTP_X_REQUESTED_WITH'])): ?>
+			<?php $style = 'display:block;'?>
+		<?php endif; ?>
+		<div id="install-app" class="install-app" style="<?php echo $style?>">
+			<div class="install-app-image left">
+				<?php
+					// Image Manager
+					if(isset($image))
+						$image = $image;
+					else
+						$image = 'images/app-img.png';
+					if(isset($imageAlt))
+						$imageAlt = $imageAlt;
+					else
+						$imageAlt = 'Whatsapp';
+
+					echo '<img src='.$image.' alt = '.$imageAlt.' width="100px" height="100px" />';
+				?>
+			</div>
+			<div class="install-app-middle left">
+				<div class="install-app-name">
+					<?php
+						if(isset($appName))
+							echo trim($appName);
+						else
+							$appName = 'Whatsapp';
+					?>
+				</div>
+				<?php if($iphone === false) :?>
+					<div class="install-app-reivew">
+						<div class="install-app-review-star">
+							<div class="rating-box">
+								 <div class="rating" style="<?php echo $ratingWidth;?>"></div>
+							</div>
+						</div>
+						<div class="install-app-count">
+							<?php
+								echo '('.$ratingCount.')';
+							?>
+						</div>
+					</div>
+				<?php endif; ?>
+			</div>
+			<div class="install-app-link left">
+				<a href="<?php echo $downloadLink;?>" target="_blank">
+					<span><?php echo 'Install'; ?></span>
+				</a>
+			</div>
+			<div class="install-app-close left">
+				<a href="javascript:void(0);" onclick="closeMe()">
+					<span><span><?php echo 'Close'; ?></span></span>
+				</a>
+			</div>
+		</div>
+		<script type="text/javascript">
+			canShow();
+			function canShow()
+			{
+				if(iOS == 'uiwebview'){
+					setCookie('app-install-notification',true);
+				}
+				if(iOS == 'not_ios'){
+					var dP = document.getElementById('install-app').style.display;
+					if(dP == 'none'){
+						setCookie('app-install-notification',true);
+					}
+				}
+			}
+			function closeMe(){
+				document.getElementById('install-app').style.display = 'none';
+				setCookie('app-install-notification',true);
+				// ExtremblerCookieManager.createCookie('app-install-div');
+			}
+
+			var isCookie = getCookie('app-install-notification');
+
+			if(isCookie != ''){
+				document.getElementById('install-app').style.display = 'none';
+			}else{
+				document.getElementById('install-app').style.display = 'block';
+				// setCookie('app-install-notification',true);
+			}
+
+			function setCookie(cname, cvalue) {
+			    var d = new Date();
+			    d.setTime(d.getTime() + (3600 * 1000));
+			    // d.setTime(d.getTime() + (30*1000));
+			    var expires = "expires="+ d.toGMTString();
+			    document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/";
+			}
+			function getCookie(cname) {
+			    var name = cname + "=";
+			    var decodedCookie = decodeURIComponent(document.cookie);
+			    var ca = decodedCookie.split(';');
+			    for(var i = 0; i <ca.length; i++) {
+			        var c = ca[i];
+			        while (c.charAt(0) == ' ') {
+			            c = c.substring(1);
+			        }
+			        if (c.indexOf(name) == 0) {
+			            return c.substring(name.length, c.length);
+			        }
+			    }
+			    return "";
+			}
+		</script>
+	</body>
+</html>
